@@ -1,0 +1,2 @@
+curl -c /tmp/tmp.01b7ThE4Ky -H Content-Type:\ application/json -d \{\"userName\":\"capstone_demo\"\,\"password\":\"LocalDemoOnly\!2026\"\} http://127.0.0.1:8000/djangoapp/login 
+{"userName": "capstone_demo", "status": "Authenticated"}
