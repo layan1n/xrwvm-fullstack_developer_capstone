@@ -1,0 +1,2 @@
+curl -b /tmp/tmp.01b7ThE4Ky http://127.0.0.1:8000/djangoapp/logout 
+{"status": "Logged out"}
