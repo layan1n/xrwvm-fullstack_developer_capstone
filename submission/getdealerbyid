@@ -1,0 +1,2 @@
+curl http://127.0.0.1:3030/fetchDealer/15 
+[{"_id":"6b073c9ba5385aecf35ec9bd","id":15,"city":"San Antonio","state":"Texas","address":"5057 Pankratz Hill","zip":"78225","lat":"29.3875","long":"-98.5245","short_name":"Tempsoft","full_name":"Tempsoft Car Dealership","__v":0}]
