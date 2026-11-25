@@ -1,0 +1,66 @@
+name: Local integration evidence
+on:
+  push:
+    paths:
+      - '.github/workflows/evidence.yml'
+  workflow_dispatch:
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: pip install -r server/requirements.txt
+      - run: npm install
+        working-directory: server/database
+      - name: Start database API
+        working-directory: server/database
+        env:
+          MONGO_URL: mongodb://127.0.0.1:27017/
+        run: |
+          node app.js > /tmp/express.log 2>&1 &
+          for i in {1..60}; do curl -fsS http://127.0.0.1:3030/fetchDealers > /dev/null && exit 0; sleep 2; done
+          cat /tmp/express.log
+          exit 1
+      - name: Start Django and seed disposable local account
+        working-directory: server
+        run: |
+          python manage.py migrate
+          python manage.py shell -c "from djangoapp.populate import initiate; initiate(); from django.contrib.auth.models import User; User.objects.create_user(username='capstone_demo',password='LocalDemoOnly!2026')"
+          mkdir -p ../evidence
+          python -u manage.py runserver 127.0.0.1:8000 --noreload > ../evidence/django_server 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8000/djangoapp/get_cars > /dev/null && exit 0; sleep 2; done
+          cat ../evidence/django_server
+          exit 1
+      - name: Collect actual curl outputs
+        env:
+          DEMO_USER: capstone_demo
+          DEMO_PASSWORD: LocalDemoOnly!2026
+        run: |
+          set -e
+          export DEALER_ID=$(curl -fsS http://127.0.0.1:3030/fetchReviews | python -c 'import sys,json; print(json.load(sys.stdin)[0]["dealership"])')
+          cookie=$(mktemp)
+          capture() { file="$1"; shift; { printf 'curl '; printf '%q ' "$@"; printf '\n'; curl -fsS "$@"; printf '\n'; } > "evidence/$file"; cat "evidence/$file"; }
+          capture loginuser -c "$cookie" -H 'Content-Type: application/json' -d '{"userName":"capstone_demo","password":"LocalDemoOnly!2026"}' http://127.0.0.1:8000/djangoapp/login
+          capture logoutuser -b "$cookie" http://127.0.0.1:8000/djangoapp/logout
+          capture getdealerreviews "http://127.0.0.1:8000/djangoapp/reviews/dealer/$DEALER_ID"
+          capture getalldealers http://127.0.0.1:8000/djangoapp/get_dealers
+          capture getdealerbyid "http://127.0.0.1:8000/djangoapp/dealer/$DEALER_ID"
+          capture getdealersbyState http://127.0.0.1:8000/djangoapp/get_dealers/Kansas
+          capture getallcarmakes http://127.0.0.1:8000/djangoapp/get_cars
+          rm -f "$cookie"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-integration-evidence
+          path: evidence/
