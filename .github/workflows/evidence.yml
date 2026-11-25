@@ -34,6 +34,8 @@ jobs:
           exit 1
       - name: Start Django and seed disposable local account
         working-directory: server
+        env:
+          backend_url: http://127.0.0.1:3030
         run: |
           python manage.py migrate
           python manage.py shell -c "from djangoapp.populate import initiate; initiate(); from django.contrib.auth.models import User; User.objects.create_user(username='capstone_demo',password='LocalDemoOnly!2026')"
@@ -53,10 +55,10 @@ jobs:
           capture() { file="$1"; shift; { printf 'curl '; printf '%q ' "$@"; printf '\n'; curl -fsS "$@"; printf '\n'; } > "evidence/$file"; cat "evidence/$file"; }
           capture loginuser -c "$cookie" -H 'Content-Type: application/json' -d '{"userName":"capstone_demo","password":"LocalDemoOnly!2026"}' http://127.0.0.1:8000/djangoapp/login
           capture logoutuser -b "$cookie" http://127.0.0.1:8000/djangoapp/logout
-          capture getdealerreviews "http://127.0.0.1:8000/djangoapp/reviews/dealer/$DEALER_ID"
-          capture getalldealers http://127.0.0.1:8000/djangoapp/get_dealers
-          capture getdealerbyid "http://127.0.0.1:8000/djangoapp/dealer/$DEALER_ID"
-          capture getdealersbyState http://127.0.0.1:8000/djangoapp/get_dealers/Kansas
+          capture getdealerreviews "http://127.0.0.1:3030/fetchReviews/dealer/$DEALER_ID"
+          capture getalldealers http://127.0.0.1:3030/fetchDealers
+          capture getdealerbyid "http://127.0.0.1:3030/fetchDealer/$DEALER_ID"
+          capture getdealersbyState http://127.0.0.1:3030/fetchDealers/Kansas
           capture getallcarmakes http://127.0.0.1:8000/djangoapp/get_cars
           rm -f "$cookie"
       - uses: actions/upload-artifact@v4
